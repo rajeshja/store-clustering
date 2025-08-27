@@ -72,6 +72,16 @@ export function MapView({ stores }: MapViewProps) {
     setIsPanning(false);
   };
 
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const zoomFactor = 1.1;
+    if (e.deltaY < 0) {
+      setZoom(z => Math.min(z * zoomFactor, 5));
+    } else {
+      setZoom(z => Math.max(z / zoomFactor, 0.2));
+    }
+  };
+
   if (stores.length === 0) {
      return (
       <div className="flex h-full w-full items-center justify-center bg-muted">
@@ -95,6 +105,7 @@ export function MapView({ stores }: MapViewProps) {
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
+      onWheel={handleWheel}
       style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
       onClick={() => selectedStore && setSelectedStore(null)}
     >
