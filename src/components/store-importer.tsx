@@ -54,6 +54,7 @@ export function StoreImporter({ onClusteringComplete }: StoreImporterProps) {
           title: 'Clustering Failed',
           description: result.error,
         });
+        onClusteringComplete([]);
       } else {
         onClusteringComplete(result.stores);
         toast({

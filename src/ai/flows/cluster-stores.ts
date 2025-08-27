@@ -1,69 +1,130 @@
-'use server';
+'use client';
 
-/**
- * @fileOverview This file contains the Genkit flow for clustering store locations based on geographic proximity.
- *
- * - clusterStores - A function that takes a CSV file of store locations and clusters them into optimal groups.
- * - ClusterStoresInput - The input type for the clusterStores function.
- * - ClusterStoresOutput - The return type for the clusterStores function.
- */
+import React, { useState, useTransition } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { getClusters } from '@/app/actions';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { useToast } from '@/hooks/use-toast';
+import type { Store } from '@/types';
+import { Loader2, Upload } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-
-const ClusterStoresInputSchema = z.object({
-  csvData: z
-    .string()
-    .describe('CSV data containing store details including latitude and longitude.'),
-  numClusters: z
-    .number()
-    .min(5)
-    .max(10)
-    .default(7) // sensible default
-    .describe('The desired number of store clusters (between 5 and 10).'),
+const formSchema = z.object({
+  numClusters: z.number().min(5).max(10),
+  csvFile: z
+    .custom<FileList>()
+    .refine(files => files?.length > 0, 'A CSV file is required.')
+    .refine(files => files?.[0]?.type === 'text/csv', 'File must be a CSV.'),
 });
-export type ClusterStoresInput = z.infer<typeof ClusterStoresInputSchema>;
 
-const ClusterStoresOutputSchema = z.object({
-  clusters: z.array(
-    z.object({
-      storeIds: z.array(z.string()).describe('List of store IDs in this cluster.'),
-      latitude: z.number().describe('The latitude of the cluster centroid.'),
-      longitude: z.number().describe('The longitude of the cluster centroid.'),
-    })
-  ).describe('An array of store clusters, each with a list of store IDs and the cluster centroid coordinates.'),
-});
-export type ClusterStoresOutput = z.infer<typeof ClusterStoresOutputSchema>;
+type FormValues = z.infer<typeof formSchema>;
 
-export async function clusterStores(input: ClusterStoresInput): Promise<ClusterStoresOutput> {
-  return clusterStoresFlow(input);
+interface StoreImporterProps {
+  onClusteringComplete: (stores: Store[]) => void;
 }
 
-const prompt = ai.definePrompt({
-  name: 'clusterStoresPrompt',
-  input: {schema: ClusterStoresInputSchema},
-  output: {schema: ClusterStoresOutputSchema},
-  prompt: `You are a location analyst. Given the following CSV data of store locations, cluster them into {{numClusters}} optimal groups based on geographic proximity using a machine learning model.
+export function StoreImporter({ onClusteringComplete }: StoreImporterProps) {
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
+  const [fileName, setFileName] = useState('');
 
-CSV Data:
-{{csvData}}
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      numClusters: 7,
+      csvFile: undefined,
+    },
+  });
 
-Return a JSON object representing the clusters. Each cluster should contain an array of store IDs (assuming the CSV has a column named 'storeId') and the latitude/longitude coordinates of the cluster's centroid.
+  const onSubmit = (values: FormValues) => {
+    startTransition(async () => {
+      const file = values.csvFile[0];
+      const csvData = await file.text();
+      
+      const result = await getClusters(csvData, values.numClusters);
 
-Make sure the 'storeId' values are strings.
+      if (result.error) {
+        toast({
+          variant: 'destructive',
+          title: 'Clustering Failed',
+          description: result.error,
+        });
+        onClusteringComplete([]);
+      } else {
+        onClusteringComplete(result.stores);
+        toast({
+          title: 'Success!',
+          description: `Successfully clustered ${result.stores.length} stores.`,
+        });
+      }
+    });
+  };
 
-Output the data in the following format:
-${JSON.stringify(ClusterStoresOutputSchema.shape, null, 2)}`,
-});
+  return (
+    <Card className="h-full shadow-none border-0 rounded-none">
+      <CardHeader>
+        <CardTitle>StoreMapper</CardTitle>
+        <CardDescription>Upload a CSV to cluster your stores on the map.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="csvFile">Store Data CSV</Label>
+            <div className="relative">
+              <Input
+                id="csvFile"
+                type="file"
+                accept=".csv"
+                className="hidden"
+                {...form.register('csvFile', {
+                  onChange: (e) => setFileName(e.target.files?.[0]?.name || ''),
+                })}
+                disabled={isPending}
+              />
+              <Label htmlFor="csvFile" className="flex items-center gap-2 cursor-pointer rounded-md border border-input p-2.5 text-sm hover:bg-accent hover:text-accent-foreground has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
+                <Upload className="h-5 w-5 text-muted-foreground" />
+                <span className="text-muted-foreground truncate">{fileName || 'Select a file...'}</span>
+              </Label>
+            </div>
+            {form.formState.errors.csvFile && (
+              <p className="text-sm font-medium text-destructive">{form.formState.errors.csvFile.message?.toString()}</p>
+            )}
+          </div>
 
-const clusterStoresFlow = ai.defineFlow(
-  {
-    name: 'clusterStoresFlow',
-    inputSchema: ClusterStoresInputSchema,
-    outputSchema: ClusterStoresOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
-  }
-);
+          <div className="space-y-2">
+            <Label>Number of Clusters: {form.watch('numClusters')}</Label>
+            <Slider
+              min={5}
+              max={10}
+              step={1}
+              value={[form.watch('numClusters')]}
+              onValueChange={(value) => form.setValue('numClusters', value[0])}
+              disabled={isPending}
+            />
+          </div>
+
+          <Button type="submit" className="w-full" disabled={isPending}>
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Clustering...
+              </>
+            ) : (
+              'Cluster Stores'
+            )}
+          </Button>
+          <div className="text-xs text-muted-foreground pt-4 space-y-1">
+            <p className='font-medium'>Example CSV format:</p>
+            <code className='block bg-muted p-2 rounded-md'>storeId,name,type,latitude,longitude</code>
+            <code className='block bg-muted p-2 rounded-md'>1,Main St Super,supermarket,40.71,-74.00</code>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
