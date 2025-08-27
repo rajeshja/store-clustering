@@ -7,14 +7,16 @@ export function parseCsv(csvData: string): Store[] {
   }
 
   const header = lines[0].split(',').map(h => h.trim());
-  const storeIdIndex = header.indexOf('storeId');
-  const nameIndex = header.indexOf('name');
-  const typeIndex = header.indexOf('type');
-  const latitudeIndex = header.indexOf('latitude');
-  const longitudeIndex = header.indexOf('longitude');
+  const storeIdIndex = header.indexOf('store-id');
+  const nameIndex = header.indexOf('store-name');
+  const typeIndex = header.indexOf('store-type');
+  const latitudeIndex = header.indexOf('store-latitude');
+  const longitudeIndex = header.indexOf('store-longitude');
+  const workingHoursIndex = header.indexOf('working_hours');
 
-  if (storeIdIndex === -1 || nameIndex === -1 || typeIndex === -1 || latitudeIndex === -1 || longitudeIndex === -1) {
-    throw new Error('CSV must contain storeId, name, type, latitude, and longitude columns.');
+
+  if (storeIdIndex === -1 || nameIndex === -1 || typeIndex === -1 || latitudeIndex === -1 || longitudeIndex === -1 || workingHoursIndex === -1) {
+    throw new Error('CSV must contain store-id, store-name, store-type, store-latitude, store-longitude, and working_hours columns.');
   }
 
   return lines.slice(1).map((line, index) => {
@@ -33,6 +35,7 @@ export function parseCsv(csvData: string): Store[] {
       type: type === 'supermarket' || type === 'express' ? type : 'default',
       latitude: parseFloat(values[latitudeIndex]),
       longitude: parseFloat(values[longitudeIndex]),
+      workingHours: values[workingHoursIndex].trim(),
     };
     
     if (isNaN(store.latitude) || isNaN(store.longitude)) {

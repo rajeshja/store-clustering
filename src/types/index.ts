@@ -5,6 +5,7 @@ export interface Store {
   latitude: number;
   longitude: number;
   clusterId?: number;
+  workingHours: string;
 }
 
 export interface Cluster {

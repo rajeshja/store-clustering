@@ -123,8 +123,8 @@ export function StoreImporter({ onClusteringComplete }: StoreImporterProps) {
           </Button>
           <div className="text-xs text-muted-foreground pt-4 space-y-1">
             <p className='font-medium'>Example CSV format:</p>
-            <code className='block bg-muted p-2 rounded-md'>storeId,name,type,latitude,longitude</code>
-            <code className='block bg-muted p-2 rounded-md'>1,Main St Super,supermarket,40.71,-74.00</code>
+            <code className='block bg-muted p-2 rounded-md'>store-id,store-name,store-latitude,store-longitude,store-type,working_hours</code>
+            <code className='block bg-muted p-2 rounded-md'>1,Main St Super,40.71,-74.00,supermarket,9am-5pm</code>
           </div>
         </form>
       </CardContent>
