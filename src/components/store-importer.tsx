@@ -19,7 +19,10 @@ const formSchema = z.object({
   csvFile: z
     .custom<FileList>()
     .refine(files => files?.length > 0, 'A CSV file is required.')
-    .refine(files => files?.[0]?.type === 'text/csv', 'File must be a CSV.'),
+    .refine(
+      (files) => files?.[0]?.name.toLowerCase().endsWith('.csv'),
+      'File must be a CSV.'
+    ),
 });
 
 type FormValues = z.infer<typeof formSchema>;
