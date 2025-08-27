@@ -6,6 +6,7 @@ import { getStoreIcon } from '@/components/icons';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { ZoomIn, ZoomOut } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const CLUSTER_COLORS = [
   '#FF5733', '#33FF57', '#3357FF', '#FF33A1', '#A133FF',
@@ -121,6 +122,13 @@ export function MapView({ stores }: MapViewProps) {
                 const { x, y } = getPosition(store);
                 const Icon = getStoreIcon(store.type);
                 const color = store.clusterId !== undefined ? CLUSTER_COLORS[store.clusterId % CLUSTER_COLORS.length] : '#808080';
+                
+                const shapeClass = {
+                  supermarket: 'rounded-none',
+                  express: 'rounded-md',
+                  'dark store': 'rounded-full',
+                  default: 'rounded-full',
+                }[store.type];
 
                 return (
                 <button
@@ -131,10 +139,13 @@ export function MapView({ stores }: MapViewProps) {
                     transform: 'translate(-50%, -50%)',
                     backgroundColor: color,
                     }}
-                    className="absolute w-6 h-6 rounded-full flex items-center justify-center text-white shadow-md transition-transform hover:scale-125"
+                    className={cn(
+                        "absolute w-6 h-6 flex items-center justify-center text-white shadow-md transition-transform hover:scale-125",
+                        shapeClass
+                    )}
                     onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedStore(store);
+                      e.stopPropagation();
+                      setSelectedStore(store);
                     }}
                 >
                     <Icon className="h-4 w-4" />

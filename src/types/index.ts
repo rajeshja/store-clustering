@@ -1,7 +1,7 @@
 export interface Store {
   storeId: string;
   name: string;
-  type: 'supermarket' | 'express' | 'default';
+  type: 'supermarket' | 'express' | 'dark store' | 'default';
   latitude: number;
   longitude: number;
   clusterId?: number;

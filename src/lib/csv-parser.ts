@@ -32,7 +32,7 @@ export function parseCsv(csvData: string): Store[] {
     const store: Store = {
       storeId: values[storeIdIndex].trim(),
       name: values[nameIndex].trim(),
-      type: type === 'supermarket' || type === 'express' ? type : 'default',
+      type: type === 'supermarket' || type === 'express' || type === 'dark store' ? type : 'default',
       latitude: parseFloat(values[latitudeIndex]),
       longitude: parseFloat(values[longitudeIndex]),
       workingHours: values[workingHoursIndex].trim(),
