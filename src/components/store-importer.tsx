@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import type { Store } from '@/types';
-import { Loader2, Upload } from 'lucide-react';
+import { Loader2, Upload, Plus, Minus } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 
 const formSchema = z.object({
@@ -68,6 +68,8 @@ export function StoreImporter({ onClusteringComplete }: StoreImporterProps) {
     });
   };
 
+  const numClusters = form.watch('numClusters');
+
   return (
     <Card className="h-full shadow-none border-0 rounded-none">
       <CardHeader>
@@ -100,15 +102,39 @@ export function StoreImporter({ onClusteringComplete }: StoreImporterProps) {
           </div>
 
           <div className="space-y-2">
-            <Label>Number of Clusters: {form.watch('numClusters')}</Label>
-            <Slider
-              min={5}
-              max={10}
-              step={1}
-              value={[form.watch('numClusters')]}
-              onValueChange={(value) => form.setValue('numClusters', value[0])}
-              disabled={isPending}
-            />
+            <Label>Number of Clusters: {numClusters}</Label>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => form.setValue('numClusters', Math.max(5, numClusters - 1))}
+                disabled={numClusters <= 5 || isPending}
+              >
+                <Minus className="h-4 w-4" />
+                <span className="sr-only">Decrease clusters</span>
+              </Button>
+              <Slider
+                min={5}
+                max={10}
+                step={1}
+                value={[numClusters]}
+                onValueChange={(value) => form.setValue('numClusters', value[0])}
+                disabled={isPending}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => form.setValue('numClusters', Math.min(10, numClusters + 1))}
+                disabled={numClusters >= 10 || isPending}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="sr-only">Increase clusters</span>
+              </Button>
+            </div>
           </div>
 
           <Button type="submit" className="w-full" disabled={isPending}>
