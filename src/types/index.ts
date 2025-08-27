@@ -1,0 +1,17 @@
+export interface Store {
+  storeId: string;
+  name: string;
+  type: 'supermarket' | 'express' | 'default';
+  latitude: number;
+  longitude: number;
+  clusterId?: number;
+}
+
+export interface Cluster {
+  clusterId: number;
+  stores: Store[];
+  center: {
+    lat: number;
+    lng: number;
+  };
+}
