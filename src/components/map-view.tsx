@@ -1,6 +1,5 @@
 'use client';
 
-import { APIProvider, AdvancedMarker, InfoWindow, Map, Pin } from '@vis.gl/react-google-maps';
 import React, { useState, useMemo } from 'react';
 import type { Store } from '@/types';
 import { getStoreIcon } from '@/components/icons';
@@ -16,33 +15,34 @@ interface MapViewProps {
 }
 
 export function MapView({ stores }: MapViewProps) {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
 
-  const center = useMemo(() => {
+  const bounds = useMemo(() => {
     if (stores.length === 0) {
-      return { lat: 40.7128, lng: -74.0060 }; // Default to NYC
+      return { minLat: 0, maxLat: 0, minLng: 0, maxLng: 0 };
     }
-    const avgLat = stores.reduce((sum, s) => sum + s.latitude, 0) / stores.length;
-    const avgLng = stores.reduce((sum, s) => sum + s.longitude, 0) / stores.length;
-    return { lat: avgLat, lng: avgLng };
+    const lats = stores.map(s => s.latitude);
+    const lngs = stores.map(s => s.longitude);
+    return {
+      minLat: Math.min(...lats),
+      maxLat: Math.max(...lats),
+      minLng: Math.min(...lngs),
+      maxLng: Math.max(...lngs),
+    };
   }, [stores]);
-  
-  if (!apiKey) {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-muted">
-        <Card className="text-center">
-          <CardHeader>
-            <CardTitle>Configuration Error</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">Google Maps API Key is missing.</p>
-            <p className="text-sm text-muted-foreground">Please add <code className="bg-primary/10 p-1 rounded-sm">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to your .env.local file.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+
+  const getPosition = (store: Store) => {
+    const { minLat, maxLat, minLng, maxLng } = bounds;
+    const latRange = maxLat - minLat;
+    const lngRange = maxLng - minLng;
+
+    // Avoid division by zero if all points are the same
+    const x = lngRange === 0 ? 50 : ((store.longitude - minLng) / lngRange) * 100;
+    // Invert latitude for correct screen orientation (higher lat is more north, so smaller y)
+    const y = latRange === 0 ? 50 : (1 - (store.latitude - minLat) / latRange) * 100;
+    
+    return { x, y };
+  };
 
   if (stores.length === 0) {
      return (
@@ -60,52 +60,50 @@ export function MapView({ stores }: MapViewProps) {
   }
 
   return (
-    <div className="w-full h-full bg-muted rounded-lg overflow-hidden">
-      <APIProvider apiKey={apiKey}>
-        <Map
-          mapId="store-mapper-map"
-          style={{ width: '100%', height: '100%' }}
-          defaultCenter={center}
-          center={center}
-          defaultZoom={10}
-          gestureHandling={'greedy'}
-          disableDefaultUI={true}
-          mapTypeId='roadmap'
+    <div className="w-full h-full bg-muted rounded-lg overflow-hidden relative" onClick={() => setSelectedStore(null)}>
+      {stores.map(store => {
+        const { x, y } = getPosition(store);
+        const Icon = getStoreIcon(store.type);
+        const color = store.clusterId !== undefined ? CLUSTER_COLORS[store.clusterId % CLUSTER_COLORS.length] : '#808080';
+
+        return (
+          <button
+            key={store.storeId}
+            style={{ 
+              left: `${x}%`, 
+              top: `${y}%`,
+              transform: 'translate(-50%, -50%)',
+              backgroundColor: color,
+            }}
+            className="absolute w-6 h-6 rounded-full flex items-center justify-center text-white shadow-md transition-transform hover:scale-125"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedStore(store);
+            }}
+          >
+            <Icon className="h-4 w-4" />
+          </button>
+        );
+      })}
+
+      {selectedStore && (
+        <div 
+          className="absolute bg-card rounded-lg shadow-xl p-3 min-w-48 border"
+          style={{ 
+            left: `${getPosition(selectedStore).x}%`, 
+            top: `${getPosition(selectedStore).y}%`, 
+            transform: 'translate(-50%, calc(-100% - 20px))'
+          }}
         >
-          {stores.map(store => {
-            const Icon = getStoreIcon(store.type);
-            const color = store.clusterId !== undefined ? CLUSTER_COLORS[store.clusterId % CLUSTER_COLORS.length] : '#808080';
-
-            return (
-              <AdvancedMarker
-                key={store.storeId}
-                position={{ lat: store.latitude, lng: store.longitude }}
-                onClick={() => setSelectedStore(store)}
-              >
-                <Pin background={color} borderColor={'#fff'} glyph={<Icon className="h-6 w-6 text-white" />} />
-              </AdvancedMarker>
-            );
-          })}
-
-          {selectedStore && (
-            <InfoWindow
-              position={{ lat: selectedStore.latitude, lng: selectedStore.longitude }}
-              onCloseClick={() => setSelectedStore(null)}
-              pixelOffset={[0, -40]}
-            >
-              <div className="p-1 min-w-48">
-                <h3 className="font-bold text-base">{selectedStore.name}</h3>
-                <p className="text-sm capitalize text-muted-foreground">{selectedStore.type} Store</p>
-                {selectedStore.clusterId !== undefined && (
-                  <p className="text-sm font-medium" style={{color: CLUSTER_COLORS[selectedStore.clusterId % CLUSTER_COLORS.length]}}>
-                    Cluster {selectedStore.clusterId + 1}
-                  </p>
-                )}
-              </div>
-            </InfoWindow>
-          )}
-        </Map>
-      </APIProvider>
+            <h3 className="font-bold text-base">{selectedStore.name}</h3>
+            <p className="text-sm capitalize text-muted-foreground">{selectedStore.type} Store</p>
+            {selectedStore.clusterId !== undefined && (
+              <p className="text-sm font-medium" style={{color: CLUSTER_COLORS[selectedStore.clusterId % CLUSTER_COLORS.length]}}>
+                Cluster {selectedStore.clusterId + 1}
+              </p>
+            )}
+        </div>
+      )}
     </div>
   );
 }
